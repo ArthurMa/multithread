@@ -225,15 +225,15 @@ static void *thread_do_work(void *m_pool)
 
 void *thread_cleanup(void *m_pool) {
   pool_t *pool = (pool_t*)m_pool;
-  int i = 0;
+  //int i = 0;
   while(!pool->shutdown) {
-    printf("lalalalalallalala ------------cleanup_thread[%d]\n",i );
+    //printf("lalalalalallalala ------------cleanup_thread[%d]\n",i );
     //clock_t a = clock();
     sleep(1); //about 1 sec
     //clock_t b = clock() - a;
     //printf("%ld\n", b);
     check_seats();
-    i++;
+    //i++;
   }
   pthread_exit(NULL);
   return(NULL);

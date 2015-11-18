@@ -187,7 +187,7 @@ void check_seats() {
         //elapsed = diff * 1000 / CLOCKS_PER_SEC;
         //printf("%ld secs have gone!\n", elapsed);
         if (curr->state == PENDING && diff >= 5000) {
-            printf("already in it!");
+            //printf("already in it!");
             tsem_wait(&sem);
             standby_t* cur = standby_front;
             if (cur != NULL) {
