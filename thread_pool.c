@@ -80,15 +80,12 @@ pool_t *pool_create(int queue_size, int num_threads)
 }
 
 
-int get_index(int priority) {
-  return priority-1 >= 0 ? priority - 1 : 0;
-}
 
 /*
  * Add a task to the threadpool
  *
  */
-int pool_add_task(pool_t *pool, void (*function)(void *), void *argument, int priority)
+int pool_add_task(pool_t *pool, void (*function)(void *), void *argument, int pri)
 {
     int err = 0;
     pool_task_t* task = NULL;
@@ -100,8 +97,6 @@ int pool_add_task(pool_t *pool, void (*function)(void *), void *argument, int pr
       task->argument = argument;
       task->next = NULL;
 
-      int pri;
-      pri = get_index(priority);
       if (pool->task_queue[pri].front == NULL) {
         pool->task_queue[pri].front = pool->task_queue[pri].rear = task;
       }
@@ -225,15 +220,9 @@ static void *thread_do_work(void *m_pool)
 
 void *thread_cleanup(void *m_pool) {
   pool_t *pool = (pool_t*)m_pool;
-  //int i = 0;
   while(!pool->shutdown) {
-    //printf("lalalalalallalala ------------cleanup_thread[%d]\n",i );
-    //clock_t a = clock();
     sleep(1); //about 1 sec
-    //clock_t b = clock() - a;
-    //printf("%ld\n", b);
     check_seats();
-    //i++;
   }
   pthread_exit(NULL);
   return(NULL);

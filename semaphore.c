@@ -3,14 +3,14 @@
 #include <unistd.h>
 #include "semaphore.h"
 
-int tsem_init(m_sem_t* s, int value) {
+int sem_init(m_sem_t* s, int value) {
 	s->value = value;
 	pthread_cond_init(&s->notify, NULL);
 	pthread_mutex_init(&s->lock, NULL);
 	return 0;
 }
 
-int tsem_wait(m_sem_t *s)
+int sem_wait(m_sem_t *s)
 {
     //TODO
     pthread_mutex_lock(&s->lock);
@@ -22,7 +22,7 @@ int tsem_wait(m_sem_t *s)
     return 0;
 }
 
-int tsem_post(m_sem_t *s)
+int sem_post(m_sem_t *s)
 {
     //TODO
     int prior_value;
@@ -33,4 +33,10 @@ int tsem_post(m_sem_t *s)
     if (prior_value == 0) 
     	pthread_cond_signal(&s->notify);
     return 0;
+}
+
+int sem_destroy(m_sem_t *s) {
+	pthread_mutex_destroy(&s->lock);
+	pthread_cond_destroy(&s->notify);
+	return 0;
 }

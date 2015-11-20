@@ -43,6 +43,10 @@ void list_seats(char* buf, int bufsize)
         snprintf(buf, bufsize, "No seats not found\n\n");
 }
 
+void print_standby_list() {
+
+}
+
 void view_seat(char* buf, int bufsize,  int seat_id, int customer_id, int customer_priority)
 {
     seat_t* curr = seat_header;
@@ -64,13 +68,11 @@ void view_seat(char* buf, int bufsize,  int seat_id, int customer_id, int custom
             }
             else
             {
-                tsem_wait(&sem);
-                if (!empty_seats) {
+                sem_wait(&sem);
+                if (1) {
                     if (standby_size && curr->state == PENDING) {
                         standby_t* standby_req = (standby_t*)malloc(sizeof(standby_t));
                         standby_req->customer_id = customer_id;
-                        //add to standby list
-                        //TODO
                         if (standby_front == NULL)
                             standby_front = standby_rear = standby_req;
                         else {
@@ -83,7 +85,7 @@ void view_seat(char* buf, int bufsize,  int seat_id, int customer_id, int custom
                         snprintf(buf, bufsize, "Seat unavailable\n\n");
                     }
                 }
-                tsem_post(&sem);
+                sem_post(&sem);
                 snprintf(buf, bufsize, "Seat unavailable\n\n");
             }
             pthread_mutex_unlock(&curr->lock);
@@ -139,7 +141,7 @@ void cancel(char* buf, int bufsize, int seat_id, int customer_id, int customer_p
             {
                 snprintf(buf, bufsize, "Seat request cancelled: %d %c\n\n",
                         curr->id, seat_state_to_char(curr->state));
-                tsem_wait(&sem);
+                sem_wait(&sem);
 
                 standby_t* cur = standby_front;
                 if (cur != NULL) {
@@ -156,7 +158,7 @@ void cancel(char* buf, int bufsize, int seat_id, int customer_id, int customer_p
                     curr->customer_id = -1;
                     empty_seats++;
                 }
-                tsem_post(&sem);
+                sem_post(&sem);
             }
             else if(curr->customer_id != customer_id )
             {
@@ -178,17 +180,14 @@ void cancel(char* buf, int bufsize, int seat_id, int customer_id, int customer_p
 
 void check_seats() {
     clock_t cur_time = clock();
-    //printf("timetimetimetimetimetimetiem[%d]\n", cur_time);
     seat_t* curr = seat_header;
     while (curr != NULL) {
-        clock_t diff;
+        clock_t diff, elapsed;
         pthread_mutex_lock(&curr->lock);
         diff = cur_time - curr->start_time;
-        //elapsed = diff * 1000 / CLOCKS_PER_SEC;
-        //printf("%ld secs have gone!\n", elapsed);
-        if (curr->state == PENDING && diff >= 5000) {
-            //printf("already in it!");
-            tsem_wait(&sem);
+        elapsed = diff * 1000 / CLOCKS_PER_SEC;
+        if (curr->state == PENDING && elapsed >= 500) {
+            sem_wait(&sem);
             standby_t* cur = standby_front;
             if (cur != NULL) {
                 curr->customer_id = cur->customer_id;
@@ -205,7 +204,7 @@ void check_seats() {
                 curr->start_time = cur_time;
                 empty_seats++;
             }
-            tsem_post(&sem);
+            sem_post(&sem);
         }
         pthread_mutex_unlock(&curr->lock);
         curr = curr->next;
@@ -217,8 +216,8 @@ void load_seats(int number_of_seats)
 {
     seat_t* curr = NULL;
     standby_size = STANDBY_SIZE;
-    empty_seats = SEATS_NUM;
-    tsem_init(&sem, 1);//set to 1
+    empty_seats = number_of_seats;
+    sem_init(&sem, 1);//set to 1
     standby_front = NULL;
     standby_rear = NULL;
     int i;
@@ -246,6 +245,7 @@ void load_seats(int number_of_seats)
 void unload_seats()
 {
     seat_t* curr = seat_header;
+    sem_destroy(&sem);
     while(curr != NULL)
     {
         seat_t* temp = curr;

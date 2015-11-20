@@ -99,13 +99,7 @@ int main(int argc,char *argv[])
         
         arg_b* arg_temp = (arg_b*)malloc(sizeof(arg_b));
         arg_temp->connfd = connfd;
-        // parse_request fills in the req struct object
-        //parse_request(connfd, &req);
-        // process_request reads the req struct and processes the command
-        //process_request(connfd, &req);
-        pool_add_task(threadpool, (void*)&parse_request, (void*)arg_temp, 1);
-
-        //close(connfd);
+        pool_add_task(threadpool, (void*)&parse_request, (void*)arg_temp, 0);
     }
 
     pool_wait_all(threadpool);
@@ -118,7 +112,6 @@ int main(int argc,char *argv[])
 void shutdown_server(int signo){
     printf("Shutting down the server...\n");
     
-    // TODO: Teardown your threadpool
     pool_destroy(threadpool);
     // TODO: Print stats about your ability to handle requests.
     unload_seats();

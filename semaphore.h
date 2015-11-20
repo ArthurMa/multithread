@@ -7,8 +7,8 @@ typedef struct m_sem_t {
     pthread_cond_t notify;
 } m_sem_t;
 
-int tsem_init(m_sem_t*, int);
-int tsem_wait(m_sem_t *s);
-int tsem_post(m_sem_t *s);
-
+int sem_init(m_sem_t*, int);
+int sem_wait(m_sem_t *s);
+int sem_post(m_sem_t *s);
+int sem_destroy(m_sem_t *s);
 #endif
