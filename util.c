@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include "util.h"
 #include "seats.h"
@@ -29,6 +30,7 @@ void parse_request(arg_b* arg)
 {   
     int connfd = arg->connfd;
     struct request* req = &arg->req;
+
     char buf[BUFSIZE+1];
     char instr[20];
     char file[100];
@@ -184,6 +186,11 @@ void process_request(arg_b* arg)
             close(fd);
         } 
     }
+    //stat for this arg end and we don't want count the request that is not fully processing
+    pthread_mutex_lock(&st.lock);
+    st.req_count += 1;
+    st.total_time += (clock() - arg->arrival);
+    pthread_mutex_unlock(&st.lock);
     close(connfd);
     free(req->resource);
     free(arg);

@@ -13,6 +13,7 @@ struct request{
 typedef struct arg_bind {
 	struct request req;
 	int connfd;
+	clock_t arrival;//time record
 } arg_b;
 
 extern pool_t* threadpool;

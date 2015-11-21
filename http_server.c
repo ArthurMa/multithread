@@ -10,20 +10,19 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <pthread.h>
 
 #include "thread_pool.h"
 #include "seats.h"
 #include "util.h"
 
-#define BUFSIZE 1024
+#define BUFSIZE 1024 //requests size
 #define FILENAMESIZE 100
 
 void shutdown_server(int);
 
 int listenfd;
-
-// TODO: Declare your threadpool!
-//pool_t* threadpool;
+stat_t st;
 
 int main(int argc,char *argv[])
 {
@@ -80,9 +79,10 @@ int main(int argc,char *argv[])
     // listen for incoming requests
     listen(listenfd, 10);
 
-    // TODO: Initialize your threadpool!
+    //Initialize threadpool!
     threadpool = pool_create(BUFSIZE, 20);
-
+    //Initialize the stat struture for benchmark
+    stat_init(&st);
     // This while loop "forever", handling incoming connections
     while(1)
     {
@@ -96,13 +96,14 @@ int main(int argc,char *argv[])
             The lines below will need to be modified! Some may need to be moved
             to other locations when you make your server multithreaded.
         *********************************************************************/
-        
+        //combine request and connfd
         arg_b* arg_temp = (arg_b*)malloc(sizeof(arg_b));
         arg_temp->connfd = connfd;
+        //record the arrival time for each request
+        arg_temp->arrival = clock();
+        //add parse request to thread pool task queue with the highest priority
         pool_add_task(threadpool, (void*)&parse_request, (void*)arg_temp, 0);
     }
-
-    pool_wait_all(threadpool);
 
     pool_destroy(threadpool);
 
@@ -111,9 +112,12 @@ int main(int argc,char *argv[])
 
 void shutdown_server(int signo){
     printf("Shutting down the server...\n");
-    
+    //destroy the threadpool shutdown the server
     pool_destroy(threadpool);
-    // TODO: Print stats about your ability to handle requests.
+    //benchmarking
+    double atime = (st.total_time / st.req_count) * 1000.0/ CLOCKS_PER_SEC;
+    printf("Average Time: %f ms \n", atime);
+    pthread_mutex_destroy(&st.lock);
     unload_seats();
     close(listenfd);
     exit(0);

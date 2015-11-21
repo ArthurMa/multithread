@@ -114,16 +114,6 @@ int pool_add_task(pool_t *pool, void (*function)(void *), void *argument, int pr
     return err;
 }
 
-void pool_wait_all(pool_t *pool) {
-
-  int i;
-  void* ret;
-  for (i = 0; i < pool->task_count; i++) {
-    pthread_join(pool->threads[i], (void**)&ret);
-  }
-  return;
-}
-
 void pool_cancel_all(pool_t *pool) {
   pthread_mutex_lock(&pool->lock);
   pool->shutdown = 1;
@@ -226,4 +216,10 @@ void *thread_cleanup(void *m_pool) {
   }
   pthread_exit(NULL);
   return(NULL);
+}
+
+void stat_init(stat_t* stat){
+  stat->total_time = 0.0;
+  stat->req_count = 0;
+  pthread_mutex_init(&stat->lock, NULL);
 }
