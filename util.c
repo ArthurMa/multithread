@@ -111,7 +111,7 @@ void parse_request(arg_b* arg)
     req->seat_id = parse_int_arg(file, "seat=");
     req->user_id = parse_int_arg(file, "user=");
     req->customer_priority = parse_int_arg(file, "priority=");
-    //printf("%d \n", req->customer_priority);
+    //at the end of parse request, we add process to task queue
     pool_add_task(threadpool, (void*)&process_request, (void*)arg, req->customer_priority);
 }
 
@@ -186,7 +186,8 @@ void process_request(arg_b* arg)
             close(fd);
         } 
     }
-    //stat for this arg end and we don't want count the request that is not fully processing
+    //stat to add this arg's time and 
+    //we don't want count the request that is not fully processing
     pthread_mutex_lock(&st.lock);
     st.req_count += 1;
     st.total_time += (clock() - arg->arrival);

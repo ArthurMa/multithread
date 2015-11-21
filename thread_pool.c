@@ -18,14 +18,16 @@
 #define MAX_THREADS 20
 #define STANDBY_SIZE 10
 
+//3 level priority
 #define PRIORITY 3
 
 typedef struct pool_task{
     void (*function)(void *);
     void *argument;
-    struct pool_task *next;
+    struct pool_task *next;//make as a linked list
 } pool_task_t;
 
+//make 3 queue for 3 priorities
 typedef struct pri_queue {
   pool_task_t* front;
   pool_task_t* rear;
@@ -36,11 +38,11 @@ struct pool_t {
   pthread_mutex_t lock;
   pthread_cond_t notify;
   pthread_t *threads;
-  pthread_t *cleanup_thread;
-  pri_queue_t task_queue[PRIORITY];
+  pthread_t *cleanup_thread;// thread for cleaning up
+  pri_queue_t task_queue[PRIORITY];// 3 queues
   int thread_count;
   int task_queue_size_limit;
-  int task_count;
+  int task_count;//a counter for tasks
   int shutdown;
 };
 
@@ -54,6 +56,7 @@ pool_t *pool_create(int queue_size, int num_threads)
 {
   if (num_threads > MAX_THREADS || num_threads <= 0)
     num_threads = MAX_THREADS;
+
   pool_t* pool = (pool_t*)malloc(sizeof(pool_t));
   pool->threads = (pthread_t*)malloc(num_threads * sizeof(pthread_t));
   pool->cleanup_thread = (pthread_t*)malloc(sizeof(pthread_t));
@@ -61,19 +64,22 @@ pool_t *pool_create(int queue_size, int num_threads)
   pool->task_queue_size_limit = queue_size;
   pool->task_count = 0;
   pool->shutdown = 0;
+  //init mutex and condition var
   pthread_mutex_init(&pool->lock, NULL);
   pthread_cond_init(&pool->notify, NULL);
 
+  //init threads
   int i;
   for (i = 0; i < num_threads; i++) {
     pthread_create(&(pool->threads[i]), NULL, thread_do_work, (void*)pool);
   }
   pthread_create(pool->cleanup_thread, NULL, thread_cleanup, (void*)pool);
-  //printf("created\n");
+
+  //init priority queues
   for (i = 0; i < PRIORITY; i++) {
       pool->task_queue[i].front = NULL;
       pool->task_queue[i].rear = NULL;
-      pool->task_queue[i].priority = i+1;
+      pool->task_queue[i].priority = i;
   }
 
   return pool;
@@ -89,8 +95,9 @@ int pool_add_task(pool_t *pool, void (*function)(void *), void *argument, int pr
 {
     int err = 0;
     pool_task_t* task = NULL;
+    //lock thread pool
     pthread_mutex_lock(&pool->lock);
-
+    //add task to tasks queue based on different priorities
     if (pool->task_count < pool->task_queue_size_limit) {
       task = (pool_task_t*)malloc(sizeof(pool_task_t));
       task->function = function;
@@ -107,17 +114,22 @@ int pool_add_task(pool_t *pool, void (*function)(void *), void *argument, int pr
 
       pool->task_count++;
     }
-
+    //signal
     pthread_cond_signal(&pool->notify);
+    //unlock
     pthread_mutex_unlock(&pool->lock);
         
     return err;
 }
 
+
+/*
+ * Destroy the threadpool, free all memory, destroy treads, etc
+ *
+ */
+
 void pool_cancel_all(pool_t *pool) {
-  pthread_mutex_lock(&pool->lock);
   pool->shutdown = 1;
-  pthread_mutex_unlock(&pool->lock);
 
   int i;
   for (i = 0; i < pool->task_count; i++) {
@@ -126,11 +138,6 @@ void pool_cancel_all(pool_t *pool) {
   pthread_cancel(*pool->cleanup_thread);
   return;
 }
-
-/*
- * Destroy the threadpool, free all memory, destroy treads, etc
- *
- */
 
 void queue_destroy(pool_t* pool) {
   int i;
@@ -175,15 +182,17 @@ static void *thread_do_work(void *m_pool)
     while(!pool->shutdown) {
 
       pthread_mutex_lock(&pool->lock);
-      
+      //wait until there is a task in the task queue
       while (pool->task_count <= 0) {
         pthread_cond_wait(&pool->notify, &pool->lock);
       }
 
       int i;
       pool_task_t* task;
+
       for (i = 0; i < PRIORITY; i--) {
         task = pool->task_queue[i].front;
+        //if no task in this priority go check next level
         if (!task)
           continue;
         if (pool->task_queue[i].front == pool->task_queue[i].rear) {
@@ -207,7 +216,7 @@ static void *thread_do_work(void *m_pool)
     pthread_exit(NULL);
     return(NULL);
 }
-
+//thread for clean up the pending state last for 5 sec
 void *thread_cleanup(void *m_pool) {
   pool_t *pool = (pool_t*)m_pool;
   while(!pool->shutdown) {

@@ -8,7 +8,6 @@
 #include "semaphore.h"
 
 #define STANDBY_SIZE 10
-#define SEATS_NUM 20
 
 seat_t* seat_header = NULL;
 
@@ -57,6 +56,7 @@ void view_seat(char* buf, int bufsize,  int seat_id, int customer_id, int custom
             pthread_mutex_lock(&curr->lock);
             if(curr->state == AVAILABLE || (curr->state == PENDING && curr->customer_id == customer_id))
             {    
+                //control the empty seats
                 if (curr->state == AVAILABLE)
                     empty_seats--;
 
@@ -69,7 +69,9 @@ void view_seat(char* buf, int bufsize,  int seat_id, int customer_id, int custom
             else
             {
                 sem_wait(&sem);
-                if (1) {
+                //if there is no empty seat
+                if (!empty_seats) {
+                    //check standby list and if possible put it into list
                     if (standby_size && curr->state == PENDING) {
                         standby_t* standby_req = (standby_t*)malloc(sizeof(standby_t));
                         standby_req->customer_id = customer_id;
@@ -137,6 +139,7 @@ void cancel(char* buf, int bufsize, int seat_id, int customer_id, int customer_p
         if(curr->id == seat_id)
         {
             pthread_mutex_lock(&curr->lock);
+            //when you want to cancel, first check standby list
             if(curr->state == PENDING && curr->customer_id == customer_id )
             {
                 snprintf(buf, bufsize, "Seat request cancelled: %d %c\n\n",
@@ -177,16 +180,19 @@ void cancel(char* buf, int bufsize, int seat_id, int customer_id, int customer_p
     
     return;
 }
-
+//clean up
 void check_seats() {
-    clock_t cur_time = clock();
+    clock_t cur_time = clock();//record current time
     seat_t* curr = seat_header;
     while (curr != NULL) {
         clock_t diff, elapsed;
         pthread_mutex_lock(&curr->lock);
         diff = cur_time - curr->start_time;
-        elapsed = diff * 1000 / CLOCKS_PER_SEC;
-        if (curr->state == PENDING && elapsed >= 500) {
+        elapsed = diff * 1000 / CLOCKS_PER_SEC;//calculate elapsed time
+        //if current seat is pending and wait time is greater than 5 sec
+        //check standby list or make the seat available
+        if (curr->state == PENDING && elapsed >= 5) {
+            curr->start_time = cur_time;//reset the start time
             sem_wait(&sem);
             standby_t* cur = standby_front;
             if (cur != NULL) {
@@ -201,7 +207,6 @@ void check_seats() {
             else {
                 curr->state = AVAILABLE;
                 curr->customer_id = -1;
-                curr->start_time = cur_time;
                 empty_seats++;
             }
             sem_post(&sem);
@@ -215,8 +220,8 @@ void check_seats() {
 void load_seats(int number_of_seats)
 {
     seat_t* curr = NULL;
-    standby_size = STANDBY_SIZE;
-    empty_seats = number_of_seats;
+    standby_size = STANDBY_SIZE;//flag to count the size of availabe size of standby list
+    empty_seats = number_of_seats;//flag to count available seats
     sem_init(&sem, 1);//set to 1
     standby_front = NULL;
     standby_rear = NULL;

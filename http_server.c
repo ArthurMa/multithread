@@ -80,7 +80,7 @@ int main(int argc,char *argv[])
     listen(listenfd, 10);
 
     //Initialize threadpool!
-    threadpool = pool_create(BUFSIZE, 20);
+    threadpool = pool_create(BUFSIZE, 20);//max threads
     //Initialize the stat struture for benchmark
     stat_init(&st);
     // This while loop "forever", handling incoming connections
@@ -112,10 +112,16 @@ int main(int argc,char *argv[])
 
 void shutdown_server(int signo){
     printf("Shutting down the server...\n");
-    //destroy the threadpool shutdown the server
+    //destroy the threadpool, shutdown the server
     pool_destroy(threadpool);
     //benchmarking
-    double atime = (st.total_time / st.req_count) * 1000.0/ CLOCKS_PER_SEC;
+    double atime;
+    
+    if (st.req_count != 0) 
+        atime = (st.total_time / st.req_count) * 1000.0/ CLOCKS_PER_SEC;
+    else
+        atime = 0.0;
+
     printf("Average Time: %f ms \n", atime);
     pthread_mutex_destroy(&st.lock);
     unload_seats();

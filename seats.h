@@ -8,16 +8,18 @@ typedef enum
     OCCUPIED
 } seat_state_t;
 
+//seat structure
 typedef struct seat_struct
 {
     int id;
     int customer_id;
     seat_state_t state;
-    pthread_mutex_t lock;
+    pthread_mutex_t lock;//for multi thread
     struct seat_struct* next;
-    clock_t start_time;
+    clock_t start_time;//for clean up
 } seat_t;
 
+//standby list node structure
 typedef struct standby_struct
 {	
 	int customer_id;

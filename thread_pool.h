@@ -3,6 +3,7 @@
 
 typedef struct pool_t pool_t;
 
+//stat for benchmarking
 typedef struct {
 	clock_t total_time;
 	int req_count;
